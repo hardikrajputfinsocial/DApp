@@ -1,0 +1,9 @@
+.details-grid {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 20px;
+  padding: 20px;
+}
+.details-grid > input {
+  color: black;
+}

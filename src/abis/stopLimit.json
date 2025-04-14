@@ -1,0 +1,606 @@
+[
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_orderIndex",
+				"type": "uint256"
+			}
+		],
+		"name": "cancelOrder",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes",
+				"name": "",
+				"type": "bytes"
+			}
+		],
+		"name": "checkUpkeep",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "upkeepNeeded",
+				"type": "bool"
+			},
+			{
+				"internalType": "bytes",
+				"name": "performData",
+				"type": "bytes"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes",
+				"name": "performData",
+				"type": "bytes"
+			}
+		],
+		"name": "performUpkeep",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_trader",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_baseToken",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_quoteToken",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_margin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_leverage",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_stopPrice",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_limitPrice",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum IfutureLongShort.PositionType",
+				"name": "_positionType",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_sl",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_tp",
+				"type": "uint256"
+			}
+		],
+		"name": "PlaceStopLimitOrder",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_future",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_sltp",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "index",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "pnl",
+				"type": "uint256"
+			}
+		],
+		"name": "PositionClosed",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "index",
+				"type": "uint256"
+			}
+		],
+		"name": "PositionLiquidated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "index",
+				"type": "uint256"
+			}
+		],
+		"name": "StopLimitOrderPlace",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_baseToken",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_quoteToken",
+				"type": "address"
+			}
+		],
+		"name": "CurrentPrice",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			}
+		],
+		"name": "getActiveStopLimitOrders",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "positionId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "baseToken",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "quoteToken",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "margin",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "leverage",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "stopPrice",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "limitPrice",
+						"type": "uint256"
+					},
+					{
+						"internalType": "enum IfutureLongShort.PositionType",
+						"name": "positionType",
+						"type": "uint8"
+					},
+					{
+						"internalType": "bool",
+						"name": "triggered",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "SL",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "TP",
+						"type": "uint256"
+					}
+				],
+				"internalType": "struct stopLimit.StopLimitData[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getMyPositions",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "positionId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "baseToken",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "quoteToken",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "margin",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "leverage",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "stopPrice",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "limitPrice",
+						"type": "uint256"
+					},
+					{
+						"internalType": "enum IfutureLongShort.PositionType",
+						"name": "positionType",
+						"type": "uint8"
+					},
+					{
+						"internalType": "bool",
+						"name": "triggered",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "SL",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "TP",
+						"type": "uint256"
+					}
+				],
+				"internalType": "struct stopLimit.StopLimitData[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			}
+		],
+		"name": "getPendingStopLimitOrders",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "positionId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "baseToken",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "quoteToken",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "margin",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "leverage",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "stopPrice",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "limitPrice",
+						"type": "uint256"
+					},
+					{
+						"internalType": "enum IfutureLongShort.PositionType",
+						"name": "positionType",
+						"type": "uint8"
+					},
+					{
+						"internalType": "bool",
+						"name": "triggered",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "SL",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "TP",
+						"type": "uint256"
+					}
+				],
+				"internalType": "struct stopLimit.StopLimitData[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "isUserAdded",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "LIQUIDATION_THRESHOLD",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "Slippage",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "sltp",
+		"outputs": [
+			{
+				"internalType": "contract SLTP",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "userList",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "userPositions",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "positionId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "user",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "baseToken",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "quoteToken",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "margin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "leverage",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "stopPrice",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "limitPrice",
+				"type": "uint256"
+			},
+			{
+				"internalType": "enum IfutureLongShort.PositionType",
+				"name": "positionType",
+				"type": "uint8"
+			},
+			{
+				"internalType": "bool",
+				"name": "triggered",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "SL",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "TP",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]

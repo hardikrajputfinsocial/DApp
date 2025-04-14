@@ -1,0 +1,267 @@
+[
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_futuresContract",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_SLTP",
+				"type": "address"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "orderId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "uint256",
+				"name": "positionId",
+				"type": "uint256"
+			},
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			}
+		],
+		"name": "MarketOrderPlaced",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "MarketOrders",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "positionId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			},
+			{
+				"internalType": "enum IfutureLongShort.PositionType",
+				"name": "positionType",
+				"type": "uint8"
+			},
+			{
+				"internalType": "address",
+				"name": "baseToken",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "quoteToken",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "margin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "leverage",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "isActive",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "SL",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "TP",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "futuresContract",
+		"outputs": [
+			{
+				"internalType": "contract IfutureLongShort",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			}
+		],
+		"name": "getUserOrders",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "orderId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "positionId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "trader",
+						"type": "address"
+					},
+					{
+						"internalType": "enum IfutureLongShort.PositionType",
+						"name": "positionType",
+						"type": "uint8"
+					},
+					{
+						"internalType": "address",
+						"name": "baseToken",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "quoteToken",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "margin",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "leverage",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "stopLoss",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "takeProfit",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "entryPrice",
+						"type": "uint256"
+					},
+					{
+						"internalType": "int256",
+						"name": "PNL",
+						"type": "int256"
+					},
+					{
+						"internalType": "bool",
+						"name": "isOpen",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "openTime",
+						"type": "uint256"
+					}
+				],
+				"internalType": "struct MarketOrder.SimplifiedUserOrderWithPosition[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "orderCounter",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_baseToken",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_quoteToken",
+				"type": "address"
+			},
+			{
+				"internalType": "enum IfutureLongShort.PositionType",
+				"name": "_positionType",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_margin",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_leverage",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_sl",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_tp",
+				"type": "uint256"
+			}
+		],
+		"name": "placeMarketOrder",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]
