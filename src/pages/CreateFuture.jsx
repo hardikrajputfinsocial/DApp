@@ -1,0 +1,192 @@
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import {
+  createFuture,
+  clearSuccess,
+  clearError,
+} from "../store/slices/futuresSlice";
+import toast from "react-hot-toast";
+
+const CreateFuture = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { loading, error, success } = useSelector((state) => state.futures);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    expiryDate: "",
+    strikePrice: "",
+  });
+
+  const [privateKey, setPrivateKey] = useState("");
+
+  useEffect(() => {
+    // Clear any previous success/error state
+    dispatch(clearSuccess());
+    dispatch(clearError());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (success) {
+      toast.success("Future created successfully!");
+      navigate("/futures");
+    }
+  }, [success, navigate]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!privateKey) {
+      toast.error("Private key is required");
+      return;
+    }
+
+    try {
+      // Convert expiry date to timestamp (seconds since epoch)
+      const expiryTimestamp = Math.floor(
+        new Date(formData.expiryDate).getTime() / 1000
+      );
+
+      const futureData = {
+        ...formData,
+        expiryDate: expiryTimestamp,
+      };
+
+      await dispatch(createFuture({ futureData, privateKey }));
+    } catch (err) {
+      toast.error(err.message || "Failed to create future");
+    }
+  };
+
+  return (
+    <div className="text-white">
+      <h1 className="text-3xl font-bold mb-8">Create New Future</h1>
+
+      {error && (
+        <div className="bg-red-600/20 border border-red-600 text-red-200 p-4 rounded-lg mb-8">
+          Error: {error}
+        </div>
+      )}
+
+      <div className="bg-gray-800 rounded-lg p-6">
+        <form onSubmit={handleSubmit}>
+          <div className="mb-6">
+            <label htmlFor="name" className="block text-gray-300 mb-2">
+              Future Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter a name for your future"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label htmlFor="description" className="block text-gray-300 mb-2">
+              Description
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              required
+              rows="4"
+              className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Describe the details of this future"
+            ></textarea>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label htmlFor="expiryDate" className="block text-gray-300 mb-2">
+                Expiry Date
+              </label>
+              <input
+                type="datetime-local"
+                id="expiryDate"
+                name="expiryDate"
+                value={formData.expiryDate}
+                onChange={handleChange}
+                required
+                className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="strikePrice" className="block text-gray-300 mb-2">
+                Strike Price (ETH)
+              </label>
+              <input
+                type="number"
+                id="strikePrice"
+                name="strikePrice"
+                value={formData.strikePrice}
+                onChange={handleChange}
+                required
+                step="0.00001"
+                min="0"
+                className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label htmlFor="privateKey" className="block text-gray-300 mb-2">
+              Your Private Key
+            </label>
+            <input
+              type="password"
+              id="privateKey"
+              value={privateKey}
+              onChange={(e) => setPrivateKey(e.target.value)}
+              required
+              className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter your private key to sign the transaction"
+            />
+            <p className="text-gray-400 text-sm mt-1">
+              Your key is only used for this transaction and never stored.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/futures")}
+              className="bg-gray-700 hover:bg-gray-600 text-white py-3 px-6 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg ${
+                loading ? "opacity-70 cursor-not-allowed" : ""
+              }`}
+            >
+              {loading ? "Creating..." : "Create Future"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default CreateFuture;

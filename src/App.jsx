@@ -1,35 +1,80 @@
-import React from "react";
-import "./App.css"
-import OrderType from "./components/OrderTypes/OrderType";
-import ConnectWallet from "./components/wallet/ConnectWallet";
-import AdminFunctions from "./components/AdminFunctions";
-import { useContract } from "./hooks/UserFunctions/FutureLongShort/useContract";
-// import Header from "./components/Header/Header";
-// import LSButtons from "./components/LSButtons/LSButtons";
-import Details from "./components/LongShort/Details";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getProfile } from "./store/slices/userSlice";
+
+// Layout
+import Layout from "./components/Layout/Layout";
+
+// Pages
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Logout from "./pages/Logout";
+import FuturesList from "./pages/FuturesList";
+import FutureDetails from "./pages/FutureDetails";
+import CreateFuture from "./pages/CreateFuture";
+import EditFuture from "./pages/EditFuture";
+import NotFound from "./pages/NotFound";
+import TradingPage from "./pages/TradingPage";
+import ChartDemo from "./pages/ChartDemo";
+
+// Protected Route component
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useSelector((state) => state.user);
+
+  if (loading) return <div>Loading...</div>;
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
 
 const App = () => {
-  const { contract, isReady } = useContract();
+  const dispatch = useDispatch();
+  const { token } = useSelector((state) => state.user);
+
+  useEffect(() => {
+    if (token) {
+      dispatch(getProfile());
+    }
+  }, [dispatch, token]);
 
   return (
-    <>
-      <main className="w-full h-screen bg-gradient-to-br from-gray-900 to-gray-900/95 flex justify-center items-center">
-        <div>
-          <OrderType/>
-          <div className="mt-2">
-            <ConnectWallet/>
-          </div>
-        </div>
-      </main>
-      <section className="bg-gray-900/95 text-white">
-      {isReady ? (
-          <AdminFunctions contract={contract} />
-        ) : (
-          <p>Loading Admin Functions...</p>
-        )}
-      <Details />
-      </section>
-    </>
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        {/* Public routes */}
+        <Route index element={<Home />} />
+        <Route path="login" element={<Login />} />
+        <Route path="logout" element={<Logout />} />
+        <Route path="futures" element={<FuturesList />} />
+        <Route path="futures/:id" element={<FutureDetails />} />
+        <Route path="trading" element={<TradingPage />} />
+        <Route path="charts" element={<ChartDemo />} />
+
+        {/* Protected routes */}
+        <Route
+          path="futures/create"
+          element={
+            <ProtectedRoute>
+              <CreateFuture />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="futures/edit/:id"
+          element={
+            <ProtectedRoute>
+              <EditFuture />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* 404 route */}
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 };
 
