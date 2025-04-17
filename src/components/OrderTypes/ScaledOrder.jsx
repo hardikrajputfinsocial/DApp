@@ -1,30 +1,267 @@
-import React, { useState } from "react";
-
+import React, { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import CalculatorContainer from "../Calcultors/CalculatorContainer";
-import LeverageModal from "../OrderModels/LeverageModal"; // ✅ Add this import
+import LeverageModal from "../OrderModels/LeverageModal";
+import LSButtons from "../LSButtons/LSButtons";
+import useTokenAddresses from "../../hooks/useTokenAddresses";
+import ScaledOrderABI from "../../abis/ScaledOrder.json";
+
+// Use a hardcoded address for now to ensure we're using the correct one
+const USDT_ADDRESS = "0x7362c1e29584834d501353E684718e47329FCC53";
+const SCALED_ORDER_ADDRESS = import.meta.env.VITE_SCALED_ORDER;
 
 const ScaledOrder = () => {
-  const [lowerPrice, setLowerPrice] = useState("");
-  const [upperPrice, setUpperPrice] = useState("");
-  const [size, setSize] = useState("");
-  const [orderCount, setOrderCount] = useState(2);
-  const [distribution, setDistribution] = useState("flat");
-  const [action, setAction] = useState("buy");
+  const [totalMargin, setTotalMargin] = useState("");
+  const [startPrice, setStartPrice] = useState("");
+  const [endPrice, setEndPrice] = useState("");
+  const [numTranches, setNumTranches] = useState(5);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const [selectedToken, setSelectedToken] = useState("USDT");
+  const [selectedToken, setSelectedToken] = useState("BTC/USDT");
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
 
-  const [leverage, setLeverage] = useState(20); // ✅ leverage state
-  const [showLeverageModal, setShowLeverageModal] = useState(false); // ✅ modal toggle
   const [showCalculator, setShowCalculator] = useState(false);
 
-  const tokenPairs = ["USDT", "BTC", "ETH", "BNB"]; // fetch these dynamically , this is for test purpose
+  const [leverage, setLeverage] = useState(20);
+  const [showLeverageModal, setShowLeverageModal] = useState(false);
+  
+  const [scaledOrderContract, setScaledOrderContract] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const [userAddress, setUserAddress] = useState(null);
+
+  const { tokenAddresses } = useTokenAddresses();
+
+  const tokenPairs = [
+    "BTC/USDT",
+    "ETH/USDT",
+    "BNB/USDT",
+    "SOL/USDT",
+    "FIN/USDT",
+  ];
+
+  // Initialize contract and get user address
+  useEffect(() => {
+    const initContract = async () => {
+      if (window.ethereum) {
+        try {
+          console.log("Initializing scaled order contract at address:", SCALED_ORDER_ADDRESS);
+
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          const address = await signer.getAddress();
+          setUserAddress(address);
+          console.log("User address:", address);
+
+          // Check if contract exists at the address
+          const code = await provider.getCode(SCALED_ORDER_ADDRESS);
+          if (code === "0x") {
+            throw new Error(
+              `No contract deployed at address: ${SCALED_ORDER_ADDRESS}`
+            );
+          }
+          console.log("Contract code found at address");
+
+          const contract = new ethers.Contract(
+            SCALED_ORDER_ADDRESS,
+            ScaledOrderABI,
+            signer
+          );
+
+          // Verify the contract has the expected methods
+          if (!contract.createScaledOrder) {
+            throw new Error("Contract does not have createScaledOrder method");
+          }
+
+          console.log("Contract initialized successfully");
+          setScaledOrderContract(contract);
+          setIsReady(true);
+        } catch (err) {
+          console.error("Error initializing contract:", err);
+          setError(`Failed to initialize contract: ${err.message}`);
+        }
+      } else {
+        setError("MetaMask not found. Please install MetaMask.");
+      }
+    };
+    initContract();
+  }, []);
+
+  // Get the current token address
+  const getCurrentTokenAddress = () => {
+    return tokenAddresses[selectedToken] || "";
+  }
+
+  const handleLong = async () => {
+    if (!isReady || !scaledOrderContract || !userAddress) {
+      setError("Contract not ready or wallet not connected");
+      return;
+    }
+
+    try {
+      setError(null);
+      setLoading(true);
+
+      if (!totalMargin || !startPrice || !endPrice || !numTranches) {
+        setError("Please fill in all required fields");
+        setLoading(false);
+        return;
+      }
+
+      const baseToken = getCurrentTokenAddress();
+      if (!baseToken) {
+        setError("Invalid token pair selected");
+        setLoading(false);
+        return;
+      }
+
+      // Validate numeric inputs
+      if (isNaN(totalMargin) || parseFloat(totalMargin) <= 0) {
+        setError("Please enter a valid margin amount");
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(startPrice) || parseFloat(startPrice) <= 0) {
+        setError("Please enter a valid start price");
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(endPrice) || parseFloat(endPrice) <= 0) {
+        setError("Please enter a valid end price");
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(numTranches) || parseInt(numTranches) < 2) {
+        setError("Please enter at least 2 tranches");
+        setLoading(false);
+        return;
+      }
+
+      // Convert values to appropriate format for contract
+      const marginInWei = ethers.parseUnits(totalMargin, 18);
+      const startPriceInWei = ethers.parseUnits(startPrice, 18);
+      const endPriceInWei = ethers.parseUnits(endPrice, 18);
+      
+      // Call the createScaledOrder function
+      const tx = await scaledOrderContract.createScaledOrder(
+        baseToken,
+        USDT_ADDRESS,
+        0, // PositionType.LONG
+        marginInWei,
+        BigInt(leverage),
+        startPriceInWei,
+        endPriceInWei,
+        parseInt(numTranches)
+      );
+
+      console.log("Long scaled order placed successfully", tx);
+      await tx.wait();
+      console.log("Transaction confirmed");
+      setError(null);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error placing long scaled order:", error);
+      setError(
+        error.message ||
+          "Failed to place long order. Please check your inputs and try again."
+      );
+      setLoading(false);
+    }
+  };
+
+  const handleShort = async () => {
+    if (!isReady || !scaledOrderContract || !userAddress) {
+      setError("Contract not ready or wallet not connected");
+      return;
+    }
+
+    try {
+      setError(null);
+      setLoading(true);
+
+      if (!totalMargin || !startPrice || !endPrice || !numTranches) {
+        setError("Please fill in all required fields");
+        setLoading(false);
+        return;
+      }
+
+      const baseToken = getCurrentTokenAddress();
+      if (!baseToken) {
+        setError("Invalid token pair selected");
+        setLoading(false);
+        return;
+      }
+
+      // Validate numeric inputs
+      if (isNaN(totalMargin) || parseFloat(totalMargin) <= 0) {
+        setError("Please enter a valid margin amount");
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(startPrice) || parseFloat(startPrice) <= 0) {
+        setError("Please enter a valid start price");
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(endPrice) || parseFloat(endPrice) <= 0) {
+        setError("Please enter a valid end price");
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(numTranches) || parseInt(numTranches) < 2) {
+        setError("Please enter at least 2 tranches");
+        setLoading(false);
+        return;
+      }
+
+      // Convert values to appropriate format for contract
+      const marginInWei = ethers.parseUnits(totalMargin, 18);
+      const startPriceInWei = ethers.parseUnits(startPrice, 18);
+      const endPriceInWei = ethers.parseUnits(endPrice, 18);
+      
+      // Call the createScaledOrder function
+      const tx = await scaledOrderContract.createScaledOrder(
+        baseToken,
+        USDT_ADDRESS,
+        1, // PositionType.SHORT
+        marginInWei,
+        BigInt(leverage),
+        startPriceInWei,
+        endPriceInWei,
+        parseInt(numTranches)
+      );
+
+      console.log("Short scaled order placed successfully", tx);
+      await tx.wait();
+      console.log("Transaction confirmed");
+      setError(null);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error placing short scaled order:", error);
+      setError(
+        error.message ||
+          "Failed to place short order. Please check your inputs and try again."
+      );
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="bg-gray-900 p-4 rounded-xl w-80 text-white space-y-4">
-      {/* Available Balance */}
+    <div className="bg-gray-900 p-4 rounded-xl w-96 text-white space-y-4">
+      {error && (
+        <div className="bg-red-900/30 border border-red-500 text-red-400 p-2 rounded mb-4">
+          {error}
+        </div>
+      )}
+      
       <div className="text-gray-400 text-sm relative w-fit">
-        Avbl -{" "}
+        Token Pair -{" "}
         <button
           onClick={() => setShowTokenDropdown(!showTokenDropdown)}
           className="text-white font-medium hover:underline"
@@ -58,7 +295,7 @@ const ScaledOrder = () => {
           Calculator
         </button>
 
-        {/* ✅ Leverage Button */}
+        {/* Leverage Button */}
         <button
           onClick={() => setShowLeverageModal(true)}
           className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded text-sm text-white"
@@ -71,7 +308,7 @@ const ScaledOrder = () => {
         <CalculatorContainer onClose={() => setShowCalculator(false)} />
       )}
 
-      {/* ✅ Leverage Modal */}
+      {/* Leverage Modal */}
       <LeverageModal
         show={showLeverageModal}
         onClose={() => setShowLeverageModal(false)}
@@ -79,96 +316,76 @@ const ScaledOrder = () => {
         currentLeverage={leverage}
       />
 
-      {/* Input Fields */}
-      <div className="space-y-2">
-        <div className="flex items-center bg-gray-800 p-2 rounded-md">
-          <div>Lower Price</div>
-          <input
-            type="number"
-            className="bg-transparent text-white flex-1 outline-none"
-            value={lowerPrice}
-            onChange={(e) => setLowerPrice(e.target.value)}
-          />
-          <span className="ml-2">USDT</span>
-        </div>
-
-        <div className="flex items-center bg-gray-800 p-2 rounded-md">
-          <div>Upper Price</div>
-          <input
-            type="number"
-            className="bg-transparent text-white flex-1 outline-none"
-            value={upperPrice}
-            onChange={(e) => setUpperPrice(e.target.value)}
-          />
-          <span className="ml-2">USDT</span>
-        </div>
-
-        <div className="flex items-center bg-gray-800 p-2 rounded-md">
-          <div>Size</div>
-          <input
-            type="number"
-            className="bg-transparent text-white flex-1 outline-none"
-            value={size}
-            onChange={(e) => setSize(e.target.value)}
-          />
-          <span className="ml-2">ETH</span>
-        </div>
-
-        <div className="flex items-center bg-gray-800 p-2 rounded-md">
-          <div>Order Count</div>
-          <input
-            type="number"
-            className="bg-transparent text-white flex-1 outline-none"
-            value={orderCount}
-            min={2}
-            max={50}
-            onChange={(e) => setOrderCount(e.target.value)}
-          />
-        </div>
+      {/* Total Margin Input */}
+      <div className="flex items-center bg-gray-800 p-2 rounded-md">
+        <div>Total Margin</div>
+        <input
+          className="bg-transparent text-white flex-1 outline-none px-2"
+          value={totalMargin}
+          onChange={(e) => setTotalMargin(e.target.value)}
+          placeholder="0.00"
+          type="number"
+          step="0.01"
+          min="0"
+        />
+        <span className="text-gray-400">USDT</span>
       </div>
 
-      {/* Size Distribution */}
-      <div>
-        <p className="text-gray-400">Size Distribution</p>
-        <div className="flex justify-between mt-2">
-          {[
-            { label: "Flat", value: "flat" },
-            { label: "⬇⬆", value: "downUp" },
-            { label: "⬆⬇", value: "upDown" },
-            { label: "Random (±5%)", value: "random" },
-          ].map((option) => (
-            <button
-              key={option.value}
-              className={`px-2 py-1 rounded ${
-                distribution === option.value ? "bg-blue-500" : "bg-gray-700"
-              }`}
-              onClick={() => setDistribution(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+      {/* Start Price Input */}
+      <div className="flex items-center bg-gray-800 p-2 rounded-md">
+        <div>Start Price</div>
+        <input
+          className="bg-transparent text-white flex-1 outline-none px-2"
+          value={startPrice}
+          onChange={(e) => setStartPrice(e.target.value)}
+          placeholder="0.00"
+          type="number"
+          step="0.01"
+          min="0"
+        />
+        <span className="text-gray-400">USDT</span>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-between">
-        <button
-          className={`px-4 py-2 rounded ${
-            action === "buy" ? "bg-green-500" : "bg-gray-700"
-          }`}
-          onClick={() => setAction("buy")}
-        >
-          Buy
-        </button>
-        <button
-          className={`px-4 py-2 rounded ${
-            action === "sell" ? "bg-red-500" : "bg-gray-700"
-          }`}
-          onClick={() => setAction("sell")}
-        >
-          Sell
-        </button>
+      {/* End Price Input */}
+      <div className="flex items-center bg-gray-800 p-2 rounded-md">
+        <div>End Price</div>
+        <input
+          className="bg-transparent text-white flex-1 outline-none px-2"
+          value={endPrice}
+          onChange={(e) => setEndPrice(e.target.value)}
+          placeholder="0.00"
+          type="number"
+          step="0.01"
+          min="0"
+        />
+        <span className="text-gray-400">USDT</span>
       </div>
+
+      {/* Number of Tranches Input */}
+      <div className="flex items-center bg-gray-800 p-2 rounded-md">
+        <div>Number of Tranches</div>
+        <input
+          className="bg-transparent text-white flex-1 outline-none px-2"
+          value={numTranches}
+          onChange={(e) => setNumTranches(e.target.value)}
+          placeholder="5"
+          type="number"
+          step="1"
+          min="2"
+          max="50"
+        />
+      </div>
+
+      <LSButtons
+        orderType="scaled"
+        onBuy={handleLong}
+        onSell={handleShort}
+        liqPrice="--"
+        cost={totalMargin || "0.00"}
+        max="0.00"
+        disabled={loading}
+        loading={loading}
+      />
     </div>
   );
 };
