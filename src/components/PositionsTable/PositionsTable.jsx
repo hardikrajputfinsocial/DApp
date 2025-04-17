@@ -1,7 +1,9 @@
+// Changes by @Man-Finsocial
+
 import { useState, useEffect, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { getPendingLimitOrders } from "../../hooks/UserFunctions/LimitOrder/getPendingLimitOrders";
-import { getPendingStopLimitOrders } from "../../hooks/UserFunctions/StopLimit/getPendingStopLImitOrders";
+import { getPendingStopLimitOrders } from "../../hooks/UserFunctions/StopLimit/getPendingStopLimitOrders";
 const PositionsTable = () => {
   const [placedOrders, setPlacedOrders] = useState([]);
   const [openPositions, setOpenPositions] = useState([]);

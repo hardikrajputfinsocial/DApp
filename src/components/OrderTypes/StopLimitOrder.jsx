@@ -1,3 +1,5 @@
+// changes by @Man-Finsocial
+
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { SLTPToggle, ReduceOnlyToggle } from "../TradeOptions/index";
@@ -5,6 +7,7 @@ import LSButtons from "../LSButtons/LSButtons";
 import CalculatorContainer from "../Calcultors/CalculatorContainer";
 import LeverageModal from "../OrderModels/LeverageModal";
 import StopLimitABI from "../../abis/stopLimit.json"; // Import the ABI
+import futureLongShortABI from "../../abis/futureLongShort.json";
 
 // Token Configuration
 const TOKEN_CONFIG = {
@@ -61,6 +64,7 @@ const TOKEN_CONFIG = {
 };
 
 const STOP_LIMIT_ADDRESS = import.meta.env.VITE_STOP_LIMIT;
+const FUTURE_LONG_SHORT_ADDRESS = import.meta.env.VITE_FUTURE_LONG_SHORT;
 
 const StopLimitOrder = () => {
   // State variables
@@ -84,6 +88,7 @@ const StopLimitOrder = () => {
   const [currentQuoteToken, setCurrentQuoteToken] = useState(TOKEN_CONFIG["BTC/USDT"].quoteToken);
   const [currentPrice, setCurrentPrice] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPrice, setIsLoadingPrice] = useState(false);
 
   const tokenPairs = ["USDT", "BTC", "ETH", "BNB"];
 
@@ -120,14 +125,14 @@ const StopLimitOrder = () => {
       setCurrentQuoteToken(newQuoteToken);
       
       // Fetch current price whenever pair changes
-      getCurrentTokenPrice(newBaseToken.address, newQuoteToken.address);
+      getCurrentPrice();
     }
   }, [selectedPair, contract]);
 
   // Add a new useEffect to fetch price initially
   useEffect(() => {
     if (contract && currentBaseToken && currentQuoteToken) {
-      getCurrentTokenPrice(currentBaseToken.address, currentQuoteToken.address);
+      getCurrentPrice();
     }
   }, [contract]);
 
@@ -138,7 +143,7 @@ const StopLimitOrder = () => {
     if (contract && currentBaseToken && currentQuoteToken) {
       // Update price every 10 seconds
       interval = setInterval(() => {
-        getCurrentTokenPrice(currentBaseToken.address, currentQuoteToken.address);
+        getCurrentPrice();
       }, 10000);
     }
 
@@ -251,49 +256,35 @@ const StopLimitOrder = () => {
     }
   };
 
-  const getCurrentTokenPrice = async (baseTokenAddress, quoteTokenAddress) => {
-    try {
-      setIsLoading(true);
-      if (!contract) {
-        console.error("Contract not initialized");
-        return;
-      }
+  const getCurrentPrice = async () => {
+    if (!currentBaseToken?.address || !currentQuoteToken?.address) return;
 
-      // Get the provider and signer
+    try {
+      setIsLoadingPrice(true);
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       
-      // Create instance of FutureLongShort contract
-      const futureLongShortAddress = import.meta.env.VITE_FUTURE_LONG_SHORT; // Make sure this is set in your .env
-      const futureLongShortABI = ["function getCurrentPrice(address _baseToken, address _quoteToken) view returns (uint256)"]; // Add this to your ABI file
-      const futureLongShortContract = new ethers.Contract(
-        futureLongShortAddress,
+      const contract = new ethers.Contract(
+        FUTURE_LONG_SHORT_ADDRESS,
         futureLongShortABI,
         signer
       );
 
-      // Get current price
-      const price = await futureLongShortContract.getCurrentPrice(
-        baseTokenAddress,
-        quoteTokenAddress
+      const price = await contract.getCurrentPrice(
+        currentBaseToken.address,
+        currentQuoteToken.address
       );
-
-      // Convert price from Wei to regular number
       const formattedPrice = ethers.formatEther(price);
-      console.log(`Current price for ${baseTokenAddress}/${quoteTokenAddress}: ${formattedPrice}`);
-      
-      // Update the state
       setCurrentPrice(formattedPrice);
       
-      // Set default values for stop and limit price fields
-      setStopPrice(formattedPrice);
-      setLimitPrice(formattedPrice);
-
+      // Update stop price if Mark is selected
+      if (stopType === "Mark") {
+        setStopPrice(formattedPrice);
+      }
     } catch (error) {
       console.error("Error fetching current price:", error);
-      setError("Failed to fetch current price");
     } finally {
-      setIsLoading(false);
+      setIsLoadingPrice(false);
     }
   };
 
@@ -366,23 +357,35 @@ const StopLimitOrder = () => {
         <input
           type="number"
           className="bg-transparent text-white flex-1 outline-none"
-          value={stopPrice}
-          onChange={(e) => setStopPrice(e.target.value)}
-          placeholder={isLoading ? "Loading..." : "Enter stop price"}
-          disabled={isLoading}
+          value={stopType === "Mark" ? currentPrice || "" : ""}
+          onChange={(e) => {
+            if (stopType === "Last") {
+              setStopPrice(e.target.value);
+            }
+          }}
+          placeholder={stopType === "Last" ? "Enter stop price" : ""}
         />
         <select
           className="bg-gray-700 text-white px-3 py-1 rounded ml-2"
           value={stopType}
-          onChange={(e) => setStopType(e.target.value)}
+          onChange={(e) => {
+            setStopType(e.target.value);
+            if (e.target.value === "Mark") {
+              setStopPrice(currentPrice || "");
+            } else {
+              setStopPrice(""); // Clear the input when switching to Last
+            }
+          }}
         >
           <option value="Mark">Mark</option>
           <option value="Last">Last</option>
         </select>
-        {isLoading && (
-          <div className="ml-2 text-yellow-500">Loading...</div>
-        )}
       </div>
+
+      {/* Current Price Display
+      <div className="text-sm text-gray-400 pl-2">
+        Current Price: {isLoadingPrice ? "Loading..." : `${parseFloat(currentPrice || 0).toFixed(2)} USDT`}
+      </div> */}
 
       {/* Limit Price Input */}
       <div className="flex items-center bg-gray-800 p-2 rounded-md">
@@ -450,6 +453,8 @@ const StopLimitOrder = () => {
           setStopLoss(value || "0");
         }}
         disabled={reduceOnly}
+        baseToken={currentBaseToken.address}
+        quoteToken={currentQuoteToken.address}
       />
 
       <ReduceOnlyToggle
