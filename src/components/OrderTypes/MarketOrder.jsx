@@ -1,24 +1,39 @@
-import React, { useState } from "react";
-
+import React, { useState, useEffect } from "react";
 import { SLTPToggle, ReduceOnlyToggle } from "../TradeOptions/index";
 import CalculatorContainer from "../Calcultors/CalculatorContainer";
 import LSButtons from "../LSButtons/LSButtons";
-import LeverageModal from "../OrderModels/LeverageModal"; // ✅ Add this import
+import LeverageModal from "../OrderModels/LeverageModal";
+import { ethers } from "ethers";
+import MarketOrderABI from "../../abis/market.json";
+import useTokenAddresses from "../../hooks/useTokenAddresses";
+import { placeMarketOrder } from "../../hooks/UserFunctions/MarketOrder/placeMarketOrder";
+
+// Use a hardcoded address for now to ensure we're using the correct one
+const USDT_ADDRESS = "0x7362c1e29584834d501353E684718e47329FCC53";
+const MARKET_ORDER_ADDRESS = import.meta.env.VITE_MARKET_ORDER;
 
 const MarketOrder = () => {
-  const [percentage, setPercentage] = useState(0);
+  const [margin, setMargin] = useState("");
   const [isTPSLEnabled, setIsTPSLEnabled] = useState(false);
   const [takeProfit, setTakeProfit] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [reduceOnly, setReduceOnly] = useState(false);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const [selectedToken, setSelectedToken] = useState("USDT");
+  const [selectedToken, setSelectedToken] = useState("BTC/USDT");
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
 
   const [showCalculator, setShowCalculator] = useState(false);
 
-  const [leverage, setLeverage] = useState(20); // ✅ leverage state
-  const [showLeverageModal, setShowLeverageModal] = useState(false); // ✅ modal toggle
+  const [leverage, setLeverage] = useState(20);
+  const [showLeverageModal, setShowLeverageModal] = useState(false);
+  
+  const [marketOrderContract, setMarketOrderContract] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const [userAddress, setUserAddress] = useState(null);
+
+  const { tokenAddresses } = useTokenAddresses();
 
   const tokenPairs = [
     "BTC/USDT",
@@ -28,10 +43,202 @@ const MarketOrder = () => {
     "FIN/USDT",
   ];
 
+  // Initialize contract and get user address
+  useEffect(() => {
+    const initContract = async () => {
+      if (window.ethereum) {
+        try {
+          console.log("Initializing market contract at address:", MARKET_ORDER_ADDRESS);
+
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          const address = await signer.getAddress();
+          setUserAddress(address);
+          console.log("User address:", address);
+
+          // Check if contract exists at the address
+          const code = await provider.getCode(MARKET_ORDER_ADDRESS);
+          if (code === "0x") {
+            throw new Error(
+              `No contract deployed at address: ${MARKET_ORDER_ADDRESS}`
+            );
+          }
+          console.log("Contract code found at address");
+
+          const contract = new ethers.Contract(
+            MARKET_ORDER_ADDRESS,
+            MarketOrderABI,
+            signer
+          );
+
+          // Verify the contract has the expected methods
+          if (!contract.placeMarketOrder) {
+            throw new Error("Contract does not have placeMarketOrder method");
+          }
+
+          console.log("Contract initialized successfully");
+          setMarketOrderContract(contract);
+          setIsReady(true);
+        } catch (err) {
+          console.error("Error initializing contract:", err);
+          setError(`Failed to initialize contract: ${err.message}`);
+        }
+      } else {
+        setError("MetaMask not found. Please install MetaMask.");
+      }
+    };
+    initContract();
+  }, []);
+
+  // Get the current token address
+  const getCurrentTokenAddress = () => {
+    return tokenAddresses[selectedToken] || "";
+  };
+
+  const handleLong = async () => {
+    if (!isReady || !marketOrderContract || !userAddress) {
+      setError("Contract not ready or wallet not connected");
+      return;
+    }
+
+    try {
+      setError(null);
+      setLoading(true);
+
+      if (!margin) {
+        setError("Please enter margin amount");
+        setLoading(false);
+        return;
+      }
+
+      const baseToken = getCurrentTokenAddress();
+      if (!baseToken) {
+        setError("Invalid token pair selected");
+        setLoading(false);
+        return;
+      }
+
+      // Validate numeric inputs
+      if (isNaN(margin) || parseFloat(margin) <= 0) {
+        setError("Please enter a valid margin amount");
+        setLoading(false);
+        return;
+      }
+
+      // Validate take profit and stop loss if enabled
+      if (isTPSLEnabled) {
+        if (takeProfit && (isNaN(takeProfit) || parseFloat(takeProfit) <= 0)) {
+          setError("Please enter a valid take profit price");
+          setLoading(false);
+          return;
+        }
+        if (stopLoss && (isNaN(stopLoss) || parseFloat(stopLoss) <= 0)) {
+          setError("Please enter a valid stop loss price");
+          setLoading(false);
+          return;
+        }
+      }
+
+      const receipt = await placeMarketOrder(
+        baseToken,
+        USDT_ADDRESS,
+        0, // PositionType.LONG
+        margin,
+        leverage,
+        isTPSLEnabled ? stopLoss : "0",
+        isTPSLEnabled ? takeProfit : "0"
+      );
+
+      console.log("Long market order placed successfully", receipt);
+      setError(null);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error placing long market order:", error);
+      setError(
+        error.message ||
+          "Failed to place long order. Please check your inputs and try again."
+      );
+      setLoading(false);
+    }
+  };
+
+  const handleShort = async () => {
+    if (!isReady || !marketOrderContract || !userAddress) {
+      setError("Contract not ready or wallet not connected");
+      return;
+    }
+
+    try {
+      setError(null);
+      setLoading(true);
+
+      if (!margin) {
+        setError("Please enter margin amount");
+        setLoading(false);
+        return;
+      }
+
+      const baseToken = getCurrentTokenAddress();
+      if (!baseToken) {
+        setError("Invalid token pair selected");
+        setLoading(false);
+        return;
+      }
+
+      // Validate numeric inputs
+      if (isNaN(margin) || parseFloat(margin) <= 0) {
+        setError("Please enter a valid margin amount");
+        setLoading(false);
+        return;
+      }
+
+      // Validate take profit and stop loss if enabled
+      if (isTPSLEnabled) {
+        if (takeProfit && (isNaN(takeProfit) || parseFloat(takeProfit) <= 0)) {
+          setError("Please enter a valid take profit price");
+          setLoading(false);
+          return;
+        }
+        if (stopLoss && (isNaN(stopLoss) || parseFloat(stopLoss) <= 0)) {
+          setError("Please enter a valid stop loss price");
+          setLoading(false);
+          return;
+        }
+      }
+
+      const receipt = await placeMarketOrder(
+        baseToken,
+        USDT_ADDRESS,
+        1, // PositionType.SHORT
+        margin,
+        leverage,
+        isTPSLEnabled ? stopLoss : "0",
+        isTPSLEnabled ? takeProfit : "0"
+      );
+
+      console.log("Short market order placed successfully", receipt);
+      setError(null);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error placing short market order:", error);
+      setError(
+        error.message ||
+          "Failed to place short order. Please check your inputs and try again."
+      );
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="bg-gray-900 p-4 rounded-xl w-80 text-white space-y-4">
+    <div className="bg-gray-900 p-4 rounded-xl w-96 text-white space-y-4">
+      {error && (
+        <div className="bg-red-900/30 border border-red-500 text-red-400 p-2 rounded mb-4">
+          {error}
+        </div>
+      )}
+      
       <div className="text-gray-400 text-sm relative w-fit">
-        Avbl -{" "}
+        Token Pair -{" "}
         <button
           onClick={() => setShowTokenDropdown(!showTokenDropdown)}
           className="text-white font-medium hover:underline"
@@ -86,25 +293,20 @@ const MarketOrder = () => {
         currentLeverage={leverage}
       />
 
-      {/* Size Input (Displays Percentage) */}
+      {/* Margin Input */}
       <div className="flex items-center bg-gray-800 p-2 rounded-md">
-        <div>Size</div>
+        <div>Margin</div>
         <input
-          className="bg-transparent text-white flex-1 outline-none"
-          value={percentage} // Display percentage in input box
-          onChange={(e) => setPercentage(e.target.value)}
+          className="bg-transparent text-white flex-1 outline-none px-2"
+          value={margin}
+          onChange={(e) => setMargin(e.target.value)}
+          placeholder="0.00"
+          type="number"
+          step="0.01"
+          min="0"
         />
-        <span className="text-gray-400">%</span> {/* Shows percentage symbol */}
+        <span className="text-gray-400">USDT</span>
       </div>
-      {/* Size Percentage Slider */}
-      <input
-        type="range"
-        min="0"
-        max="100"
-        value={percentage}
-        onChange={(e) => setPercentage(Number(e.target.value))}
-        className="w-full"
-      />
 
       <SLTPToggle
         isTPSLEnabled={isTPSLEnabled}
@@ -128,26 +330,14 @@ const MarketOrder = () => {
       />
 
       <LSButtons
-        orderType="limit"
-        onBuy={() => {
-          console.log("Buy Limit Order", {
-            type: "limit",
-            price,
-            value: percentage,
-            reduceOnly,
-          });
-        }}
-        onSell={() => {
-          console.log("Sell Limit Order", {
-            type: "limit",
-            price,
-            value: percentage,
-            reduceOnly,
-          });
-        }}
+        orderType="market"
+        onBuy={handleLong}
+        onSell={handleShort}
         liqPrice="--"
-        cost="0.00"
+        cost={margin || "0.00"}
         max="0.00"
+        disabled={loading}
+        loading={loading}
       />
     </div>
   );
