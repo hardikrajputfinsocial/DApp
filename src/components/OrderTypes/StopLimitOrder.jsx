@@ -89,6 +89,7 @@ const StopLimitOrder = () => {
   const [currentPrice, setCurrentPrice] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPrice, setIsLoadingPrice] = useState(false);
+  const [userBalance, setUserBalance] = useState("0");
 
   const tokenPairs = ["USDT", "BTC", "ETH", "BNB"];
 
@@ -153,6 +154,38 @@ const StopLimitOrder = () => {
       }
     };
   }, [contract, currentBaseToken, currentQuoteToken]);
+
+  // Add function to fetch user balance
+  const fetchUserBalance = async () => {
+    try {
+      if (!window.ethereum) return;
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+      
+      const futureLongShortContract = new ethers.Contract(
+        FUTURE_LONG_SHORT_ADDRESS,
+        futureLongShortABI,
+        signer
+      );
+      
+      const balance = await futureLongShortContract.getUserWalletBalance(
+        userAddress,
+        currentQuoteToken.address // USDT address
+      );
+      
+      const formattedBalance = ethers.formatEther(balance);
+      setUserBalance(formattedBalance);
+    } catch (error) {
+      console.error("Error fetching user balance:", error);
+    }
+  };
+
+  // Add useEffect to fetch balance when component mounts or quote token changes
+  useEffect(() => {
+    fetchUserBalance();
+  }, [currentQuoteToken]);
 
   // Function to place stop limit order
   const placeStopLimitOrder = async (isLong) => {
@@ -288,6 +321,13 @@ const StopLimitOrder = () => {
     }
   };
 
+  // Update the percentage slider and size calculation
+  const handlePercentageChange = (newPercentage) => {
+    setPercentage(newPercentage);
+    const calculatedSize = (parseFloat(userBalance) * newPercentage) / 100;
+    setSize(calculatedSize.toFixed(2));
+  };
+
   return (
     <div className="bg-gray-900 p-4 rounded-xl w-96 text-white space-y-4">
       {error && (
@@ -357,23 +397,21 @@ const StopLimitOrder = () => {
         <input
           type="number"
           className="bg-transparent text-white flex-1 outline-none"
-          value={stopType === "Mark" ? currentPrice || "" : ""}
+          value={stopType === "Last" ? (stopPrice || currentPrice || "") : ""}
           onChange={(e) => {
-            if (stopType === "Last") {
-              setStopPrice(e.target.value);
-            }
+            setStopPrice(e.target.value);
           }}
-          placeholder={stopType === "Last" ? "Enter stop price" : ""}
+          placeholder="Enter stop price"
         />
         <select
           className="bg-gray-700 text-white px-3 py-1 rounded ml-2"
           value={stopType}
           onChange={(e) => {
             setStopType(e.target.value);
-            if (e.target.value === "Mark") {
+            if (e.target.value === "Last") {
               setStopPrice(currentPrice || "");
             } else {
-              setStopPrice(""); // Clear the input when switching to Last
+              setStopPrice(""); // Clear the input when switching to Mark
             }
           }}
         >
@@ -382,10 +420,10 @@ const StopLimitOrder = () => {
         </select>
       </div>
 
-      {/* Current Price Display
+      {/* Current Price Display */}
       <div className="text-sm text-gray-400 pl-2">
         Current Price: {isLoadingPrice ? "Loading..." : `${parseFloat(currentPrice || 0).toFixed(2)} USDT`}
-      </div> */}
+      </div>
 
       {/* Limit Price Input */}
       <div className="flex items-center bg-gray-800 p-2 rounded-md">
@@ -418,26 +456,42 @@ const StopLimitOrder = () => {
           type="number"
           className="bg-transparent text-white flex-1 outline-none"
           value={size}
-          onChange={(e) => setSize(e.target.value)}
+          onChange={(e) => {
+            setSize(e.target.value);
+            // Calculate and set percentage based on input size
+            if (userBalance && parseFloat(userBalance) > 0) {
+              const newPercentage = (parseFloat(e.target.value) / parseFloat(userBalance)) * 100;
+              setPercentage(Math.min(100, Math.max(0, newPercentage)));
+            }
+          }}
           placeholder="Enter size"
         />
         <span className="text-gray-400">USDT</span>
       </div>
 
+      {/* Available Balance Display */}
+      <div className="text-sm text-gray-400 pl-2">
+        Available: {parseFloat(userBalance).toFixed(2)} USDT
+      </div>
+
       {/* Size Percentage Slider */}
-      <input
-        type="range"
-        min="0"
-        max="100"
-        value={percentage}
-        onChange={(e) => {
-          const newPercentage = Number(e.target.value);
-          setPercentage(newPercentage);
-          // Calculate size based on percentage and available balance
-          // Add your calculation logic here
-        }}
-        className="w-full"
-      />
+      <div className="space-y-2">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={percentage}
+          onChange={(e) => handlePercentageChange(Number(e.target.value))}
+          className="w-full"
+        />
+        <div className="flex justify-between text-xs text-gray-400">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
+      </div>
 
       <SLTPToggle
         isTPSLEnabled={isTPSLEnabled}
