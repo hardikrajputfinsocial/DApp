@@ -1,7 +1,9 @@
+// Changes by @Man-Finsocial
+
 import { useState, useEffect, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { getPendingLimitOrders } from "../../hooks/UserFunctions/LimitOrder/getPendingLimitOrders";
-
+import { getPendingStopLimitOrders } from "../../hooks/UserFunctions/StopLimit/getPendingStopLimitOrders";
 const PositionsTable = () => {
   const [placedOrders, setPlacedOrders] = useState([]);
   const [openPositions, setOpenPositions] = useState([]);
@@ -45,21 +47,32 @@ const PositionsTable = () => {
       setLoadingPlaced(true);
       setError(null);
 
-      // Fetch pending limit orders (placed, but not yet executed)
-      const pendingOrders = await getPendingLimitOrders(user.address);
+      // Fetch both types of orders
+      const [limitOrders, stopLimitOrders] = await Promise.all([
+        getPendingLimitOrders(user.address),
+        getPendingStopLimitOrders(user.address)
+      ]);
 
-      // Add status to each order
-      const formattedOrders = pendingOrders.map((order) => ({
+      // Format limit orders
+      const formattedLimitOrders = limitOrders.map((order) => ({
         ...order,
         status: "placed",
         type: order.positionType === 0 ? "Long" : "Short",
-        // Convert token addresses to token names
-        pair: `${getTokenName(order.baseToken)}/${getTokenName(
-          order.quoteToken
-        )}`,
+        pair: `${getTokenName(order.baseToken)}/${getTokenName(order.quoteToken)}`,
+        orderType: 'limit'
       }));
 
-      setPlacedOrders(formattedOrders);
+      // Format stop limit orders
+      const formattedStopLimitOrders = stopLimitOrders.map((order) => ({
+        ...order,
+        status: "placed",
+        type: order.positionType === 0 ? "Long" : "Short",
+        pair: `${getTokenName(order.baseToken)}/${getTokenName(order.quoteToken)}`,
+        orderType: 'stop-limit'
+      }));
+
+      // Combine both types of orders
+      setPlacedOrders([...formattedLimitOrders, ...formattedStopLimitOrders]);
       setLoadingPlaced(false);
     } catch (err) {
       console.error("Error fetching placed orders:", err);
