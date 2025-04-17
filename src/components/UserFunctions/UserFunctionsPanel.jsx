@@ -10,6 +10,8 @@ import ClosePosition from "../LongShort/ClosePosition";
 
 const UserFunctionsPanel = () => {
   const { isReady } = useContract();
+  console.log("Ready",isReady);
+  
   const [activeTab, setActiveTab] = useState("trade");
 
   if (!isReady) {
