@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { SLTPToggle, ReduceOnlyToggle } from "../TradeOptions/index";
 import CalculatorContainer from "../Calcultors/CalculatorContainer";
 import LSButtons from "../LSButtons/LSButtons";
@@ -14,6 +14,8 @@ const MARKET_ORDER_ADDRESS = import.meta.env.VITE_MARKET_ORDER;
 
 const MarketOrder = () => {
   const [margin, setMargin] = useState("");
+  const [percentage, setPercentage] = useState(0);
+  const [userBalance, setUserBalance] = useState("0");
   const [isTPSLEnabled, setIsTPSLEnabled] = useState(false);
   const [takeProfit, setTakeProfit] = useState("");
   const [stopLoss, setStopLoss] = useState("");
@@ -79,6 +81,9 @@ const MarketOrder = () => {
           console.log("Contract initialized successfully");
           setMarketOrderContract(contract);
           setIsReady(true);
+          
+          // Fetch user balance
+          fetchUserBalance();
         } catch (err) {
           console.error("Error initializing contract:", err);
           setError(`Failed to initialize contract: ${err.message}`);
@@ -89,11 +94,57 @@ const MarketOrder = () => {
     };
     initContract();
   }, []);
+  
+  // Refetch balance when token changes
+  useEffect(() => {
+    if (isReady) {
+      fetchUserBalance();
+    }
+  }, [selectedToken, isReady]);
 
   // Get the current token address
   const getCurrentTokenAddress = () => {
     return tokenAddresses[selectedToken] || "";
   };
+  
+  // Fetch user balance
+  const fetchUserBalance = async () => {
+    try {
+      if (!window.ethereum) return;
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+      
+      // Import the necessary contract and ABI
+      const FUTURE_LONG_SHORT_ADDRESS = import.meta.env.VITE_FUTURE_LONG_SHORT;
+      const futureLongShortABI = await import("../../abis/futureLongShort.json");
+      
+      const futureLongShortContract = new ethers.Contract(
+        FUTURE_LONG_SHORT_ADDRESS,
+        futureLongShortABI.default || futureLongShortABI,
+        signer
+      );
+      
+      // Use USDT address for quote token
+      const balance = await futureLongShortContract.getUserWalletBalance(
+        userAddress,
+        USDT_ADDRESS
+      );
+      
+      const formattedBalance = ethers.formatEther(balance);
+      setUserBalance(formattedBalance);
+    } catch (error) {
+      console.error("Error fetching user balance:", error);
+    }
+  };
+  
+  // Update the percentage slider and margin calculation
+  const handlePercentageChange = useCallback((newPercentage) => {
+    setPercentage(newPercentage);
+    const calculatedMargin = (parseFloat(userBalance) * newPercentage) / 100;
+    setMargin(calculatedMargin.toFixed(2));
+  }, [userBalance]);
 
   const handleLong = async () => {
     if (!isReady || !marketOrderContract || !userAddress) {
@@ -299,13 +350,44 @@ const MarketOrder = () => {
         <input
           className="bg-transparent text-white flex-1 outline-none px-2"
           value={margin}
-          onChange={(e) => setMargin(e.target.value)}
+          onChange={(e) => {
+            setMargin(e.target.value);
+            // Calculate and set percentage based on input margin
+            if (userBalance && parseFloat(userBalance) > 0) {
+              const newPercentage = (parseFloat(e.target.value) / parseFloat(userBalance)) * 100;
+              setPercentage(Math.min(100, Math.max(0, newPercentage)));
+            }
+          }}
           placeholder="0.00"
           type="number"
           step="0.01"
           min="0"
         />
         <span className="text-gray-400">USDT</span>
+      </div>
+      
+      {/* Available Balance Display */}
+      <div className="text-sm text-gray-400 pl-2">
+        Available: {parseFloat(userBalance).toFixed(2)} USDT
+      </div>
+
+      {/* Size Percentage Slider */}
+      <div className="space-y-2">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={percentage}
+          onChange={(e) => handlePercentageChange(Number(e.target.value))}
+          className="w-full"
+        />
+        <div className="flex justify-between text-xs text-gray-400">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
       </div>
 
       <SLTPToggle

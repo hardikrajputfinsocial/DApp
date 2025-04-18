@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { SLTPToggle, ReduceOnlyToggle } from "../TradeOptions/index";
 import CalculatorContainer from "../Calcultors/CalculatorContainer";
 import LSButtons from "../LSButtons/LSButtons";
@@ -6,6 +6,7 @@ import LeverageModal from "../OrderModels/LeverageModal";
 import { ethers } from "ethers";
 import LimitOrderABI from "../../abis/LimitOrder.json";
 import useTokenAddresses from "../../hooks/useTokenAddresses";
+// We'll dynamically import the futureLongShort ABI when needed
 
 // Use a hardcoded address for now to ensure we're using the correct one
 const USDT_ADDRESS = "0x7362c1e29584834d501353E684718e47329FCC53";
@@ -14,6 +15,8 @@ const LIMIT_ORDER_ADDRESS = import.meta.env.VITE_LIMIT_ORDER;
 const Limit = () => {
   const [price, setPrice] = useState("");
   const [margin, setMargin] = useState("");
+  const [percentage, setPercentage] = useState(0);
+  const [userBalance, setUserBalance] = useState("0");
   const [isTPSLEnabled, setIsTPSLEnabled] = useState(false);
   const [takeProfit, setTakeProfit] = useState("");
   const [stopLoss, setStopLoss] = useState("");
@@ -68,6 +71,9 @@ const Limit = () => {
           console.log("Contract initialized successfully");
           setLimitOrderContract(contract);
           setIsReady(true);
+          
+          // Fetch user balance
+          fetchUserBalance();
         } catch (err) {
           console.error("Error initializing contract:", err);
           setError(`Failed to initialize contract: ${err.message}`);
@@ -78,6 +84,13 @@ const Limit = () => {
     };
     initContract();
   }, []);
+  
+  // Refetch balance when token changes
+  useEffect(() => {
+    if (isReady) {
+      fetchUserBalance();
+    }
+  }, [selectedToken, isReady]);
 
   const tokenPairs = [
     "BTC/USDT",
@@ -91,6 +104,49 @@ const Limit = () => {
   const getCurrentTokenAddress = () => {
     return tokenAddresses[selectedToken] || "";
   };
+  
+  // Fetch user balance
+  const fetchUserBalance = async () => {
+    try {
+      if (!window.ethereum) return;
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+      
+      // Import the necessary contract and ABI
+      const FUTURE_LONG_SHORT_ADDRESS = import.meta.env.VITE_FUTURE_LONG_SHORT;
+      const futureLongShortABI = await import("../../abis/futureLongShort.json");
+      
+      const futureLongShortContract = new ethers.Contract(
+        FUTURE_LONG_SHORT_ADDRESS,
+        futureLongShortABI.default || futureLongShortABI,
+        signer
+      );
+      
+      // Use USDT address for quote token
+      const balance = await futureLongShortContract.getUserWalletBalance(
+        userAddress,
+        USDT_ADDRESS
+      );
+      
+      const formattedBalance = ethers.formatEther(balance);
+      setUserBalance(formattedBalance);
+    } catch (error) {
+      console.error("Error fetching user balance:", error);
+    }
+  };
+
+  // Add useEffect to fetch balance when component mounts or token changes
+  useEffect(() => {
+    fetchUserBalance();
+  }, [selectedToken]);
+  // Update the percentage slider and margin calculation
+  const handlePercentageChange = useCallback((newPercentage) => {
+    setPercentage(newPercentage);
+    const calculatedMargin = (parseFloat(userBalance) * newPercentage) / 100;
+    setMargin(calculatedMargin.toFixed(2));
+  }, [userBalance]);
 
   const handleLong = async () => {
     if (!isReady || !limitOrderContract || !userAddress) {
@@ -370,10 +426,41 @@ const Limit = () => {
         <input
           className="bg-transparent text-white flex-1 outline-none"
           value={margin}
-          onChange={(e) => setMargin(e.target.value)}
+          onChange={(e) => {
+            setMargin(e.target.value);
+            // Calculate and set percentage based on input margin
+            if (userBalance && parseFloat(userBalance) > 0) {
+              const newPercentage = (parseFloat(e.target.value) / parseFloat(userBalance)) * 100;
+              setPercentage(Math.min(100, Math.max(0, newPercentage)));
+            }
+          }}
           placeholder="Enter margin"
         />
         <span className="text-gray-400">USDT</span>
+      </div>
+      
+      {/* Available Balance Display */}
+      <div className="text-sm text-gray-400 pl-2">
+        Available: {parseFloat(userBalance).toFixed(2)} USDT
+      </div>
+
+      {/* Size Percentage Slider */}
+      <div className="space-y-2">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={percentage}
+          onChange={(e) => handlePercentageChange(Number(e.target.value))}
+          className="w-full"
+        />
+        <div className="flex justify-between text-xs text-gray-400">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
       </div>
 
       <SLTPToggle

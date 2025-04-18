@@ -1,7 +1,8 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getProfile } from "./store/slices/userSlice";
+import "./App.css";
 
 // Layout
 import Layout from "./components/Layout/Layout";
@@ -16,6 +17,8 @@ import CreateFuture from "./pages/CreateFuture";
 import EditFuture from "./pages/EditFuture";
 import NotFound from "./pages/NotFound";
 import TradingPage from "./pages/TradingPage";
+import SpotTradingPage from "./pages/SpotTradingPage";
+import MarginTradingPage from "./pages/MarginTradingPage";
 import ChartDemo from "./pages/ChartDemo";
 
 // Protected Route component
@@ -51,6 +54,8 @@ const App = () => {
         <Route path="futures" element={<FuturesList />} />
         <Route path="futures/:id" element={<FutureDetails />} />
         <Route path="trading" element={<TradingPage />} />
+        <Route path="trading/spot" element={<SpotTradingPage />} />
+        <Route path="trading/margin" element={<MarginTradingPage />} />
         <Route path="charts" element={<ChartDemo />} />
 
         {/* Protected routes */}

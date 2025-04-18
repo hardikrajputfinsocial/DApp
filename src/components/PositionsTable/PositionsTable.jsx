@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { getPendingLimitOrders } from "../../hooks/UserFunctions/LimitOrder/getPendingLimitOrders";
 import { getPendingStopLimitOrders } from "../../hooks/UserFunctions/StopLimit/getPendingStopLimitOrders";
+import { getTWAPOrders } from "../../hooks/UserFunctions/TWAP/getTWAPOrders";
 const PositionsTable = () => {
   const [placedOrders, setPlacedOrders] = useState([]);
   const [openPositions, setOpenPositions] = useState([]);
@@ -47,10 +48,11 @@ const PositionsTable = () => {
       setLoadingPlaced(true);
       setError(null);
 
-      // Fetch both types of orders
-      const [limitOrders, stopLimitOrders] = await Promise.all([
+      // Fetch all types of orders
+      const [limitOrders, stopLimitOrders, twapOrders] = await Promise.all([
         getPendingLimitOrders(user.address),
-        getPendingStopLimitOrders(user.address)
+        getPendingStopLimitOrders(user.address),
+        getTWAPOrders(user.address)
       ]);
 
       // Format limit orders
@@ -71,8 +73,21 @@ const PositionsTable = () => {
         orderType: 'stop-limit'
       }));
 
-      // Combine both types of orders
-      setPlacedOrders([...formattedLimitOrders, ...formattedStopLimitOrders]);
+      // Format TWAP orders
+      const formattedTWAPOrders = twapOrders.map((order) => ({
+        ...order,
+        status: "placed",
+        type: order.type,
+        pair: `${getTokenName(order.config?.baseToken)}/${getTokenName(order.config?.quoteToken)}`,
+        price: order.schedule?.batchSize ? `${order.schedule.batchSize} batches` : "--",
+        margin: order.config?.margin || "--",
+        leverage: order.config?.leverage || "--",
+        orderType: 'twap',
+        timestamp: order.schedule?.closeStartTime ? new Date(order.schedule.closeStartTime * 1000).toLocaleString() : "--"
+      }));
+
+      // Combine all types of orders
+      setPlacedOrders([...formattedLimitOrders, ...formattedStopLimitOrders, ...formattedTWAPOrders]);
       setLoadingPlaced(false);
     } catch (err) {
       console.error("Error fetching placed orders:", err);

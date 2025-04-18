@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import CalculatorContainer from "../Calcultors/CalculatorContainer";
 import LeverageModal from "../OrderModels/LeverageModal";
@@ -12,6 +12,8 @@ const SCALED_ORDER_ADDRESS = import.meta.env.VITE_SCALED_ORDER;
 
 const ScaledOrder = () => {
   const [totalMargin, setTotalMargin] = useState("");
+  const [percentage, setPercentage] = useState(0);
+  const [userBalance, setUserBalance] = useState("0");
   const [startPrice, setStartPrice] = useState("");
   const [endPrice, setEndPrice] = useState("");
   const [numTranches, setNumTranches] = useState(5);
@@ -76,6 +78,9 @@ const ScaledOrder = () => {
           console.log("Contract initialized successfully");
           setScaledOrderContract(contract);
           setIsReady(true);
+          
+          // Fetch user balance
+          fetchUserBalance();
         } catch (err) {
           console.error("Error initializing contract:", err);
           setError(`Failed to initialize contract: ${err.message}`);
@@ -91,6 +96,32 @@ const ScaledOrder = () => {
   const getCurrentTokenAddress = () => {
     return tokenAddresses[selectedToken] || "";
   }
+  
+  // Fetch user balance
+  const fetchUserBalance = async () => {
+    try {
+      if (!window.ethereum) return;
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const userAddress = await signer.getAddress();
+      
+      // For demo purposes, we're using a mock balance
+      // In a real app, you would fetch this from a contract
+      const balance = await provider.getBalance(userAddress);
+      const formattedBalance = ethers.formatEther(balance);
+      setUserBalance(formattedBalance);
+    } catch (error) {
+      console.error("Error fetching user balance:", error);
+    }
+  };
+  
+  // Update the percentage slider and margin calculation
+  const handlePercentageChange = useCallback((newPercentage) => {
+    setPercentage(newPercentage);
+    const calculatedMargin = (parseFloat(userBalance) * newPercentage) / 100;
+    setTotalMargin(calculatedMargin.toFixed(2));
+  }, [userBalance]);
 
   const handleLong = async () => {
     if (!isReady || !scaledOrderContract || !userAddress) {
@@ -317,18 +348,49 @@ const ScaledOrder = () => {
       />
 
       {/* Total Margin Input */}
-      <div className="flex items-center bg-gray-800 p-2 rounded-md">
-        <div>Total Margin</div>
+      <div className="flex items-center bg-gray-800 p-2 rounded-md mb-2">
+        <div className="mr-2">Total Margin</div>
         <input
-          className="bg-transparent text-white flex-1 outline-none px-2"
-          value={totalMargin}
-          onChange={(e) => setTotalMargin(e.target.value)}
-          placeholder="0.00"
           type="number"
+          className="bg-transparent text-white flex-1 outline-none"
+          value={totalMargin}
+          onChange={(e) => {
+            setTotalMargin(e.target.value);
+            // Calculate and set percentage based on input margin
+            if (userBalance && parseFloat(userBalance) > 0) {
+              const newPercentage = (parseFloat(e.target.value) / parseFloat(userBalance)) * 100;
+              setPercentage(Math.min(100, Math.max(0, newPercentage)));
+            }
+          }}
+          placeholder="0.00"
           step="0.01"
           min="0"
         />
         <span className="text-gray-400">USDT</span>
+      </div>
+      
+      {/* Available Balance Display */}
+      <div className="text-sm text-gray-400 pl-2 mb-2">
+        Available: {parseFloat(userBalance).toFixed(2)} USDT
+      </div>
+
+      {/* Size Percentage Slider */}
+      <div className="space-y-2 mb-2">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={percentage}
+          onChange={(e) => handlePercentageChange(Number(e.target.value))}
+          className="w-full"
+        />
+        <div className="flex justify-between text-xs text-gray-400">
+          <span>0%</span>
+          <span>25%</span>
+          <span>50%</span>
+          <span>75%</span>
+          <span>100%</span>
+        </div>
       </div>
 
       {/* Start Price Input */}

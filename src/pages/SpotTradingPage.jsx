@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import OrderType from "../components/OrderTypes/OrderType";
 import ConnectWallet from "../components/wallet/ConnectWallet";
 import UserFunctionsPanel from "../components/UserFunctions/UserFunctionsPanel";
 import AdminFunctionsPanel from "../components/AdminFunctionsPanel";
 import TradingViewChart from "../components/Charts/TradingViewChart";
 import PositionsTable from "../components/PositionsTable";
-import SpotTradingPage from "./SpotTradingPage";
-import MarginTradingPage from "./MarginTradingPage";
 
-const TradingPage = () => {
-  const [activeTab, setActiveTab] = useState("futures");
-  const [tradingType, setTradingType] = useState("futures"); // futures, spot, margin
+
+const SpotTradingPage = () => {
+  const [activeTab, setActiveTab] = useState("spot");
+  const [tradingType, setTradingType] = useState("spot"); // futures, spot, margin
   const { user } = useSelector((state) => state.user);
   const [selectedPair, setSelectedPair] = useState("ETH/USD");
   const [marketStats, setMarketStats] = useState({
@@ -22,7 +21,6 @@ const TradingPage = () => {
     isPositive: true,
   });
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Token pairs data with proper TradingView symbols
   const tokenPairs = [
@@ -105,8 +103,8 @@ const TradingPage = () => {
 
   // Handle trading type changes
   const handleTradingTypeChange = (type) => {
-    if (type === "spot") {
-      navigate("/trading/spot");
+    if (type === "futures") {
+      navigate("/trading");
     } else if (type === "margin") {
       navigate("/trading/margin");
     } else {
@@ -116,7 +114,7 @@ const TradingPage = () => {
 
   return (
     <div className="text-white">
-      <h1 className="text-3xl font-bold mb-6">Trading Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-6">Spot Trading</h1>
 
       {/* Trading Type Navigation */}
       <div className="flex mb-6 border-b border-gray-700">
@@ -156,13 +154,13 @@ const TradingPage = () => {
       <div className="flex mb-6 border-b border-gray-700">
         <button
           className={`py-2 px-4 ${
-            activeTab === "futures"
+            activeTab === "spot"
               ? "text-blue-400 border-b-2 border-blue-400"
               : "text-gray-400 hover:text-gray-300"
           }`}
-          onClick={() => setActiveTab("futures")}
+          onClick={() => setActiveTab("spot")}
         >
-          Futures Trading
+          Spot Trading
         </button>
         <button
           className={`py-2 px-4 ${
@@ -240,7 +238,7 @@ const TradingPage = () => {
               <p className="text-xl font-bold">${marketStats.volume}</p>
             </div>
             <div className="bg-gray-800 p-4 rounded-lg text-center">
-              <p className="text-sm text-gray-400">Open Interest</p>
+              <p className="text-sm text-gray-400">Market Cap</p>
               <p className="text-xl font-bold">${marketStats.openInterest}</p>
             </div>
             <div className="bg-gray-800 p-4 rounded-lg text-center">
@@ -255,7 +253,7 @@ const TradingPage = () => {
             </div>
           </div>
 
-          {/* Positions Table - Added above Order Book / Recent Trades */}
+          {/* Positions Table */}
           <div className="mt-6">
             <PositionsTable />
           </div>
@@ -264,10 +262,10 @@ const TradingPage = () => {
           <div className="mt-6">
             <div className="bg-gray-800 p-4 rounded-lg">
               <h3 className="text-lg font-medium mb-4">
-                {activeTab === "futures" ? "Order Book" : "Trading History"}
+                {activeTab === "spot" ? "Order Book" : "Trading History"}
               </h3>
 
-              {activeTab === "futures" ? (
+              {activeTab === "spot" ? (
                 <div className="space-y-2">
                   <div className="grid grid-cols-3 text-gray-400 text-sm">
                     <span>Price</span>
@@ -275,7 +273,7 @@ const TradingPage = () => {
                     <span>Total</span>
                   </div>
                   <div className="h-40 overflow-y-auto space-y-1">
-                    {/* Sample order book entries - now based on selected pair */}
+                    {/* Sample order book entries - based on selected pair */}
                     {getCurrentTokenPair().basePrice > 1000 ? (
                       <>
                         <div className="grid grid-cols-3 text-red-400">
@@ -396,4 +394,4 @@ const TradingPage = () => {
   );
 };
 
-export default TradingPage;
+export default SpotTradingPage;

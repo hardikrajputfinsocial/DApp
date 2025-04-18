@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import OrderType from "../components/OrderTypes/OrderType";
 import ConnectWallet from "../components/wallet/ConnectWallet";
 import UserFunctionsPanel from "../components/UserFunctions/UserFunctionsPanel";
 import AdminFunctionsPanel from "../components/AdminFunctionsPanel";
 import TradingViewChart from "../components/Charts/TradingViewChart";
 import PositionsTable from "../components/PositionsTable";
-import SpotTradingPage from "./SpotTradingPage";
-import MarginTradingPage from "./MarginTradingPage";
 
-const TradingPage = () => {
-  const [activeTab, setActiveTab] = useState("futures");
-  const [tradingType, setTradingType] = useState("futures"); // futures, spot, margin
+
+const MarginTradingPage = () => {
+  const [activeTab, setActiveTab] = useState("margin");
+  const [tradingType, setTradingType] = useState("margin"); // futures, spot, margin
   const { user } = useSelector((state) => state.user);
   const [selectedPair, setSelectedPair] = useState("ETH/USD");
   const [marketStats, setMarketStats] = useState({
@@ -21,8 +20,8 @@ const TradingPage = () => {
     change: "+2.45%",
     isPositive: true,
   });
+  const [marginLevel, setMarginLevel] = useState("3x");
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Token pairs data with proper TradingView symbols
   const tokenPairs = [
@@ -57,6 +56,9 @@ const TradingPage = () => {
       basePrice: 18,
     },
   ];
+
+  // Margin levels
+  const marginLevels = ["2x", "3x", "5x", "10x"];
 
   // Get the current token pair details
   const getCurrentTokenPair = () => {
@@ -105,10 +107,10 @@ const TradingPage = () => {
 
   // Handle trading type changes
   const handleTradingTypeChange = (type) => {
-    if (type === "spot") {
+    if (type === "futures") {
+      navigate("/trading");
+    } else if (type === "spot") {
       navigate("/trading/spot");
-    } else if (type === "margin") {
-      navigate("/trading/margin");
     } else {
       setTradingType(type);
     }
@@ -116,7 +118,7 @@ const TradingPage = () => {
 
   return (
     <div className="text-white">
-      <h1 className="text-3xl font-bold mb-6">Trading Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-6">Margin Trading</h1>
 
       {/* Trading Type Navigation */}
       <div className="flex mb-6 border-b border-gray-700">
@@ -156,13 +158,13 @@ const TradingPage = () => {
       <div className="flex mb-6 border-b border-gray-700">
         <button
           className={`py-2 px-4 ${
-            activeTab === "futures"
+            activeTab === "margin"
               ? "text-blue-400 border-b-2 border-blue-400"
               : "text-gray-400 hover:text-gray-300"
           }`}
-          onClick={() => setActiveTab("futures")}
+          onClick={() => setActiveTab("margin")}
         >
-          Futures Trading
+          Margin Trading
         </button>
         <button
           className={`py-2 px-4 ${
@@ -180,6 +182,22 @@ const TradingPage = () => {
       <div className="grid md:grid-cols-3 gap-6">
         {/* Left Column - Order Entry */}
         <div className="space-y-4">
+          {/* Margin Level Selector */}
+          <div className="bg-gray-900 p-4 rounded-xl mb-4">
+            <h3 className="text-lg font-medium mb-2">Margin Level</h3>
+            <div className="flex space-x-2">
+              {marginLevels.map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setMarginLevel(level)}
+                  className={`px-3 py-1 rounded ${marginLevel === level ? 'bg-blue-600' : 'bg-gray-700'}`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+          
           <OrderType />
           <UserFunctionsPanel />
           <div className="mt-4">
@@ -240,8 +258,8 @@ const TradingPage = () => {
               <p className="text-xl font-bold">${marketStats.volume}</p>
             </div>
             <div className="bg-gray-800 p-4 rounded-lg text-center">
-              <p className="text-sm text-gray-400">Open Interest</p>
-              <p className="text-xl font-bold">${marketStats.openInterest}</p>
+              <p className="text-sm text-gray-400">Borrowing Rate</p>
+              <p className="text-xl font-bold">0.02% / 8h</p>
             </div>
             <div className="bg-gray-800 p-4 rounded-lg text-center">
               <p className="text-sm text-gray-400">24h Change</p>
@@ -255,7 +273,7 @@ const TradingPage = () => {
             </div>
           </div>
 
-          {/* Positions Table - Added above Order Book / Recent Trades */}
+          {/* Positions Table */}
           <div className="mt-6">
             <PositionsTable />
           </div>
@@ -264,10 +282,10 @@ const TradingPage = () => {
           <div className="mt-6">
             <div className="bg-gray-800 p-4 rounded-lg">
               <h3 className="text-lg font-medium mb-4">
-                {activeTab === "futures" ? "Order Book" : "Trading History"}
+                {activeTab === "margin" ? "Order Book" : "Trading History"}
               </h3>
 
-              {activeTab === "futures" ? (
+              {activeTab === "margin" ? (
                 <div className="space-y-2">
                   <div className="grid grid-cols-3 text-gray-400 text-sm">
                     <span>Price</span>
@@ -275,7 +293,7 @@ const TradingPage = () => {
                     <span>Total</span>
                   </div>
                   <div className="h-40 overflow-y-auto space-y-1">
-                    {/* Sample order book entries - now based on selected pair */}
+                    {/* Sample order book entries - based on selected pair */}
                     {getCurrentTokenPair().basePrice > 1000 ? (
                       <>
                         <div className="grid grid-cols-3 text-red-400">
@@ -396,4 +414,4 @@ const TradingPage = () => {
   );
 };
 
-export default TradingPage;
+export default MarginTradingPage;
