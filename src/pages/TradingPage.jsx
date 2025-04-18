@@ -8,6 +8,8 @@ import UserFunctionsPanel from "../components/UserFunctions/UserFunctionsPanel";
 import AdminFunctionsPanel from "../components/AdminFunctionsPanel";
 import TradingViewChart from "../components/Charts/TradingViewChart";
 import PositionsTable from "../components/PositionsTable";
+import SpotTradingPage from "./SpotTradingPage";
+import MarginTradingPage from "./MarginTradingPage";
 
 const TradingPage = () => {
   const [activeTab, setActiveTab] = useState("futures");
