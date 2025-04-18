@@ -2,13 +2,12 @@ import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import OrderType from "../components/OrderTypes/OrderType";
+import SpotLimitOrder from "../components/OrderTypes/SpotLimitOrder";
 import ConnectWallet from "../components/wallet/ConnectWallet";
 import UserFunctionsPanel from "../components/UserFunctions/UserFunctionsPanel";
 import AdminFunctionsPanel from "../components/AdminFunctionsPanel";
 import TradingViewChart from "../components/Charts/TradingViewChart";
 import PositionsTable from "../components/PositionsTable";
-import SpotTradingPage from "./SpotTradingPage";
-import MarginTradingPage from "./MarginTradingPage";
 
 const TradingPage = () => {
   const [activeTab, setActiveTab] = useState("futures");
@@ -105,12 +104,18 @@ const TradingPage = () => {
 
   // Handle trading type changes
   const handleTradingTypeChange = (type) => {
-    if (type === "spot") {
-      navigate("/trading/spot");
-    } else if (type === "margin") {
-      navigate("/trading/margin");
-    } else {
-      setTradingType(type);
+    setTradingType(type);
+  };
+
+  // Render the appropriate order type component based on trading type
+  const renderOrderType = () => {
+    switch (tradingType) {
+      case "spot":
+        return <SpotLimitOrder />;
+      case "margin":
+        return <div>Margin Trading Coming Soon</div>;
+      default:
+        return <OrderType />;
     }
   };
 
@@ -180,7 +185,7 @@ const TradingPage = () => {
       <div className="grid md:grid-cols-3 gap-6">
         {/* Left Column - Order Entry */}
         <div className="space-y-4">
-          <OrderType />
+          {renderOrderType()}
           <UserFunctionsPanel />
           <div className="mt-4">
             <ConnectWallet />
@@ -255,7 +260,7 @@ const TradingPage = () => {
             </div>
           </div>
 
-          {/* Positions Table - Added above Order Book / Recent Trades */}
+          {/* Positions Table */}
           <div className="mt-6">
             <PositionsTable />
           </div>
